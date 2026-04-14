@@ -6,4 +6,4 @@ class ModelRunner:
         self.model.load()
 
     def generate(self, req):
-        return self.model.generate(req)
+        return self.model.generate(req.model_dump())

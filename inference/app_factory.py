@@ -3,6 +3,7 @@ from fastapi import FastAPI, Header
 from inference.auth import verify_api_key
 from inference.config import MODEL_NAME
 from inference.models.registry import get_model
+from inference.runtime.context import ModelContext
 from inference.runtime.model_runner import ModelRunner
 from inference.schemas import GenerateRequest
 
@@ -10,7 +11,9 @@ from inference.schemas import GenerateRequest
 def create_app() -> FastAPI:
     app = FastAPI(title="MUIC Inference Engine")
 
-    model = get_model(MODEL_NAME)
+    ctx = ModelContext()
+
+    model = get_model(MODEL_NAME, ctx)
     runner = ModelRunner(model)
     runner.load()
 
