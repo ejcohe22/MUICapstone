@@ -1,0 +1,44 @@
+services:
+
+  inference:
+    build:
+      context: ./inference
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_NAME=${MODEL_NAME:-dummy}
+      - API_KEY=${API_KEY:-dev-key}
+    volumes:
+      # persist downloaded model weights across restarts
+      - hf_cache:/app/.cache/huggingface
+    # uncomment if you have an nvidia gpu:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 15s
+      start_period: 60s
+      retries: 3
+
+  octave:
+    build:
+      context: ./octave
+      dockerfile: Dockerfile
+    depends_on:
+      inference:
+        condition: service_healthy
+    # octave layer talks to inference over the internal docker network
+    environment:
+      - INFERENCE_URL=http://inference:8000
+    # override CMD to run a script instead of interactive shell:
+    # command: ["octave", "--path", "/app/ji_math", "/app/your_script.m"]
+
+volumes:
+  hf_cache:
