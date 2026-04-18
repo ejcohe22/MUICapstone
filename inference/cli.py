@@ -1,12 +1,14 @@
 # inference/cli.py
 
-import typer
 import base64
+
 import requests
+import typer
 
 app = typer.Typer()
 
 API_URL = "http://localhost:8000"
+
 
 @app.command()
 def generate(prompt: str):
@@ -25,9 +27,11 @@ def generate(prompt: str):
 
         print("Saved to output.png")
 
+
 @app.command()
 def health():
     print(requests.get(f"{API_URL}/health").json())
+
 
 if __name__ == "__main__":
     app()

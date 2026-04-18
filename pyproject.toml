@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anceps-inference"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "python-dotenv",
+    "torch",
+    "numpy",
+    "httpx",
+    "pytest",
+    "diffusers>=0.37.1",
+    "transformers>=5.5.4",
+    "accelerate>=1.13.0",
+    "safetensors>=0.7.0",
+    "typer>=0.24.1",
+    "rich>=15.0.0",
+    "scipy>=1.15.3",
+    "pillow>=12.2.0",
+]
+
+[tool.setuptools]
+packages = ["inference"]
+
+[tool.pytest.ini_options]
+testpaths = ["inference/tests"]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.10",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+

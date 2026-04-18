@@ -1,15 +1,16 @@
-import requests
 import base64
+
+import requests
 
 url = "http://127.0.0.1:8000/generate"
 
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer dev-key"
-}
+headers = {"Content-Type": "application/json", "Authorization": "Bearer dev-key"}
 
 payload = {
-    "prompt": "A picture of something that AI struggle to reproduce convincingly and it is not AI WEIWEI"
+    "prompt": (
+        "A picture of something that AI struggle to reproduce convincingly",
+        "and it is not AI WEIWEI",
+    )
 }
 
 # Send request
