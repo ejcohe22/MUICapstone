@@ -3,7 +3,7 @@ open source artificial intelligence music visualization of frequency ratios in r
 analyzes audio through extended just intonation. generates live visuals with generative models. everything free and open.
 
 ## why
-the original capstone visualizer (erik cohen, colby college) proved neural networks can drive meaningful visual output from acoustic analysis. this edition replaces proprietary maxmsp + runwayml with supercollider + gnu octave + self-hosted inference. adds deep just intonation support.
+the original capstone visualizer (erik cohen, colby college) proved neural networks can drive meaningful visual output from acoustic analysis. this edition is a collab with [jordan lenchitz](https://github.com/jordan-lenchitz/misc/blob/main/jordan_lenchitz.md) where we replace proprietary maxmsp and runwayml with supercollider and gnu octave and self-hosted inference and add deep just intonation support!
 
 three beliefs:
 (1) music tools should be free and open
