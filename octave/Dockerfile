@@ -12,8 +12,8 @@ WORKDIR /app
 COPY . .
 
 # non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1500 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # startup.m is auto-loaded by octave, adds ji_math to path + prints help
-CMD ["octave", "--interactive", "--init-file", "/app/startup.m"]
+CMD ["octave", "--no-gui", "--path", "/app/ji_math", "--eval", "source('/app/startup.m')", "--interactive"]

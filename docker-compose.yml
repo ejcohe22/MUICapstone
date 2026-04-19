@@ -2,8 +2,8 @@ services:
 
   inference:
     build:
-      context: ./inference
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: inference/Dockerfile
     ports:
       - "8000:8000"
     environment:
