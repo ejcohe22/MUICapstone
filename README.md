@@ -2,32 +2,6 @@
 open source artificial intelligence music visualization of frequency ratios in real time.
 analyzes audio through extended just intonation. generates live visuals with generative models. everything free and open.
 
-## name faq
-etymology? 
->from the latin for “double-headed”
-
->kinda like cephalopod from the greek κεφαλόποδες "head-feet"
-
-pronounciation? 
->/ˈænsɛps/ rhymes with "can steps"
-
-plural?
->ancipites
-
-what is it?
->a syllable that can be either short or long, especially in sanskrit/greek/etc. poetry
-
-can i get an example?
-> the triṣṭubh is a meter commonly used in the ṛgveda with four 11-syllable lines of the following pattern (the symbol "," represents a caesura or break between words). the fifth element is an anceps because if short must be _preceded_ by a caesura but if long it must be _followed_ by one and so what looks like two lines here are actually two (2) different ways one (1) anceps might be used!
-
-    | x – x – , u u – – u – x |
-    | x – x – – , u – – u – x |
-
-> there is a very wholesome reason for the conditionality of ancipities! vedic meter has a strong tendency to avoid a sequence where a short syllable sits at the boundary between two metrical units without being anchored by a word-break. putting the caesura on the correct side of the fifth element keeps the rhythm legible to the ear by making sure the light syllable is flanked by a structural pause that marks its position. a heavy syllable does not need that support because its length is audible on its own and so the caesura can fall after it instead. the existence of the anceps is then not arbitrary at all but serves the meter's goal of keeping the line's rhythmic skeleton perceptible during oral recitation.
-
-why is the project called this?
-> just intonation is full of ancipites: ratios like 7/4 or 11/8 [afford](https://psycnet.apa.org/record/2001-01724-000) both stability and instability depending on context, the ratio itself does not decide! this follows logic akin to the vedic triṣṭubh meter where the fifth syllable's length is not fixed by the syllable but by where the word break lands around it. anceps meaning "double-headed" also fits our pipeline: acoustic analysis on one side, generative visuals on the other, both chewing on the same real-time signal
-
 ## why are we doing this
 the original capstone visualizer (erik cohen, colby college) proved neural networks can drive meaningful visual output from acoustic analysis. this edition is a collab with [jordan lenchitz](https://github.com/jordan-lenchitz/misc/blob/main/jordan_lenchitz.md) where we replace proprietary maxmsp and runwayml with supercollider and gnu octave and self-hosted inference and add deep just intonation support!
 
@@ -169,5 +143,31 @@ set via `MODEL_NAME` environment variable.
 
 ---
 
-## license
+## name faq
+etymology? 
+>from the latin for “double-headed”
+
+>kinda like cephalopod from the greek κεφαλόποδες "head-feet"
+
+pronounciation? 
+>/ˈænsɛps/ rhymes with "can steps"
+
+plural?
+>ancipites
+
+what is it?
+>a syllable that can be either short or long, especially in sanskrit/greek/etc. poetry
+
+can i get an example?
+> the triṣṭubh is a meter commonly used in the ṛgveda with four 11-syllable lines of the following pattern (the symbol "," represents a caesura or break between words). the fifth element is an anceps because if short must be _preceded_ by a caesura but if long it must be _followed_ by one and so what looks like two lines here are actually two (2) different ways one (1) anceps might be used!
+
+    | x – x – , u u – – u – x |
+    | x – x – – , u – – u – x |
+
+> there is a very wholesome reason for the conditionality of ancipities! vedic meter has a strong tendency to avoid a sequence where a short syllable sits at the boundary between two metrical units without being anchored by a word-break. putting the caesura on the correct side of the fifth element keeps the rhythm legible to the ear by making sure the light syllable is flanked by a structural pause that marks its position. a heavy syllable does not need that support because its length is audible on its own and so the caesura can fall after it instead. the existence of the anceps is then not arbitrary at all but serves the meter's goal of keeping the line's rhythmic skeleton perceptible during oral recitation.
+
+why is the project called this?
+> just intonation is full of ancipites: ratios like 7/4 or 11/8 [afford](https://psycnet.apa.org/record/2001-01724-000) both stability and instability depending on context, the ratio itself does not decide! this follows logic akin to the vedic triṣṭubh meter where the fifth syllable's length is not fixed by the syllable but by where the word break lands around it. anceps meaning "double-headed" also fits our pipeline: acoustic analysis on one side, generative visuals on the other, both chewing on the same real-time signal
+
+## unlicense
 this is free and unencumbered software released into the public domain. anyone is free to copy, modify, publish, use, compile, sell, or distribute this software, either in source code form or as a compiled binary, for any purpose, commercial or non-commercial, and by any means. in jurisdictions that recognize copyright laws, the author or authors of this software dedicate any and all copyright interest in the software to the public domain. we make this dedication for the benefit of the public at large and to the detriment of our heirs and successors. we intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights to this software under copyright law. the software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. in no event shall the authors be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
