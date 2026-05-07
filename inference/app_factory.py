@@ -1,6 +1,6 @@
-from typing import Union
+from typing import Union, List
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, WebSocket, WebSocketDisconnect
 
 from inference.auth import verify_api_key
 from inference.config import MODEL_NAME
@@ -20,6 +20,23 @@ AnyInferenceRequest = Union[
     VideoGenerationRequest, 
     LatentInferenceRequest
 ]
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+manager = ConnectionManager()
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -43,7 +60,7 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/generate", response_model=InferenceResponse)
-    def generate(
+    async def generate(
         req: AnyInferenceRequest, 
         authorization: str = Header(None)
     ):
@@ -51,6 +68,21 @@ def create_app() -> FastAPI:
         Main inference endpoint. Uses Pydantic Union for polymorphism.
         """
         verify_api_key(authorization)
-        return runner.generate(req)
+        response = runner.generate(req)
+        
+        # Broadcast to all connected renderers
+        await manager.broadcast(response.dict())
+        
+        return response
+
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        await manager.connect(websocket)
+        try:
+            while True:
+                # Keep connection alive
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            manager.disconnect(websocket)
 
     return app
