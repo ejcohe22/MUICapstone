@@ -1,39 +1,26 @@
 import torch
-from PIL import Image
+import numpy as np
 
 from inference.models.base import ModelAdapter
+from inference.schemas import LatentInferenceRequest, InferenceResponse, OutputType
 
 
-class StyleGANModel(ModelAdapter):
-    def load(self):
-        # Example using torch hub or local weights
-        self.device = self.context.device
+class StyleGANModel(ModelAdapter[LatentInferenceRequest, InferenceResponse]):
+    """
+    StyleGAN3 adapter for latent space mapping.
+    """
 
-        # Placeholder – replace with actual StyleGAN load
-        self.G = torch.jit.load("stylegan.pt").to(self.device)
-        self.G.eval()
+    def load(self) -> None:
+        # Placeholder for actual StyleGAN loading logic
+        print("StyleGANModel: Weights loaded.")
 
-    def generate(self, payload: dict) -> dict:
-        latent = payload.get("latent")
+    def generate(self, request: LatentInferenceRequest) -> InferenceResponse:
+        # Simulate latent mapping
+        latent = torch.tensor(request.latent_vector)
+        print(f"StyleGANModel: Processing latent with shape {latent.shape}")
 
-        if latent is None:
-            # fallback: random latent
-            seed = payload.get("seed", 0)
-            torch.manual_seed(seed)
-            z = torch.randn(1, 512).to(self.device)
-        else:
-            z = torch.tensor(latent, dtype=torch.float32).to(self.device)
-            z = z.unsqueeze(0)
-
-        with torch.no_grad():
-            img = self.G(z)
-
-        img = (img.clamp(-1, 1) + 1) / 2
-        img = (img * 255).byte().cpu().numpy()[0].transpose(1, 2, 0)
-
-        pil_img = Image.fromarray(img)
-
-        return {
-            "type": "image",
-            "image": pil_img,  # you may want base64 for consistency
-        }
+        return InferenceResponse(
+            type=OutputType.DATA,
+            payload={"processed_latent": request.latent_vector},
+            metadata={"model": "stylegan3", "class": request.class_index}
+        )
