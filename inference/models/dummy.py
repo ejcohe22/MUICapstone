@@ -1,26 +1,22 @@
-import numpy as np
-
-from .base import ModelAdapter
-
-"""
-Model for unit tests
-"""
+from inference.models.base import ModelAdapter
+from inference.schemas import ImageGenerationRequest, InferenceResponse, OutputType
 
 
-class DummyModel(ModelAdapter):
-    def load(self):
-        return self
+class DummyModel(ModelAdapter[ImageGenerationRequest, InferenceResponse]):
+    """
+    Dummy implementation for testing the pipeline.
+    Follows the Strategy Pattern.
+    """
 
-    def generate(self, payload: dict) -> dict:
+    def load(self) -> None:
+        print("DummyModel: Mock loading completed.")
 
-        seed = hash(str(payload)) % (2**32)
-        rng = np.random.default_rng(seed)
-
-        img = (rng.random((64, 64, 3)) * 255).astype("uint8")
-
-        return {
-            "type": "image",
-            "shape": img.shape,
-            "data": img.tolist(),
-            "input_echo": payload,
-        }
+    def generate(self, request: ImageGenerationRequest) -> InferenceResponse:
+        # Simulate generation by returning a placeholder
+        print(f"DummyModel: Generating for prompt '{request.prompt}'")
+        
+        return InferenceResponse(
+            type=OutputType.IMAGE,
+            payload="R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",  # 1x1 transparent pixel
+            metadata={"model": "dummy", "prompt": request.prompt}
+        )
