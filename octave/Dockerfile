@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     octave \
     octave-signal \
     octave-control \
+    octave-sockets \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

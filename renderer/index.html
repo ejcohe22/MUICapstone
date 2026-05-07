@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anceps Renderer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #0f0;
+            font-size: 12px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">CONNECTING TO INFERENCE...</div>
+    <script>
+        let currentImage;
+        let socket;
+        let statusDiv;
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            statusDiv = document.getElementById('status');
+            
+            // Connect to the inference server websocket
+            connectWebsocket();
+        }
+
+        function connectWebsocket() {
+            // Priority: URL Param > Config Object > Localhost Default
+            const urlParams = new URLSearchParams(window.location.search);
+            const backendParam = urlParams.get('backend');
+            
+            let backendUrl = backendParam || (window.ANCEPS_CONFIG && window.ANCEPS_CONFIG.backendUrl);
+            
+            if (!backendUrl) {
+                // If we are on a custom domain, try to use that for the websocket as well
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host;
+                backendUrl = `${protocol}//${host}/ws`;
+                
+                // If we are just opening the file locally, fallback to localhost
+                if (window.location.protocol === 'file:') {
+                    backendUrl = 'ws://localhost:8000/ws';
+                }
+            } else {
+                // Ensure it has the /ws suffix and correct protocol
+                if (!backendUrl.endsWith('/ws')) {
+                    backendUrl = backendUrl.replace(/\/$/, '') + '/ws';
+                }
+                if (!backendUrl.startsWith('ws')) {
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    backendUrl = backendUrl.replace(/^http(s)?:\/\//, protocol + '//');
+                }
+            }
+
+            console.log('Connecting to Anceps Backend:', backendUrl);
+            socket = new WebSocket(backendUrl);
+            
+            socket.onopen = () => {
+                statusDiv.innerText = 'CONNECTED';
+                statusDiv.style.color = '#0f0';
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'image' && data.payload) {
+                    loadImage('data:image/png;base64,' + data.payload, img => {
+                        currentImage = img;
+                    });
+                } else if (data.type === 'video' && data.payload) {
+                    // For video, we'll just show the last frame for now
+                    const lastFrame = data.payload[data.payload.length - 1];
+                    loadImage('data:image/png;base64,' + lastFrame, img => {
+                        currentImage = img;
+                    });
+                }
+            };
+
+            socket.onclose = () => {
+                statusDiv.innerText = 'DISCONNECTED - RETRYING...';
+                statusDiv.style.color = '#f00';
+                setTimeout(connectWebsocket, 2000);
+            };
+
+            socket.onerror = (err) => {
+                console.error('Socket error:', err);
+            };
+        }
+
+        function draw() {
+            background(0);
+            if (currentImage) {
+                // Draw image centered and aspect-fit
+                let imgAspect = currentImage.width / currentImage.height;
+                let canvasAspect = width / height;
+                let drawW, drawH;
+                
+                if (imgAspect > canvasAspect) {
+                    drawW = width;
+                    drawH = width / imgAspect;
+                } else {
+                    drawH = height;
+                    drawW = height * imgAspect;
+                }
+                
+                image(currentImage, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+            } else {
+                // Placeholder visuals when no image is loaded
+                stroke(0, 255, 0, 50);
+                noFill();
+                ellipse(width/2, height/2, sin(frameCount * 0.05) * 200 + 300);
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>

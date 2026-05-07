@@ -36,9 +36,17 @@ services:
         condition: service_healthy
     # octave layer talks to inference over the internal docker network
     environment:
-      - INFERENCE_URL=http://inference:8000
-    # override CMD to run a script instead of interactive shell:
-    # command: ["octave", "--path", "/app/ji_math", "/app/your_script.m"]
+      - INFERENCE_URL=https://anceps-inference-hxaum2omaa-uc.a.run.app
+    command: ["octave", "--no-gui", "--path", "/app/ji_math", "--eval", "source('/app/startup.m'); source('/app/start_bridge.m')"]
+
+  renderer:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./renderer:/usr/share/nginx/html
+    depends_on:
+      - inference
 
 volumes:
   hf_cache:
