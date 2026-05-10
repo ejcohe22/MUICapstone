@@ -24,6 +24,7 @@
             color: #0f0;
             font-size: 12px;
             pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
@@ -33,99 +34,117 @@
         let currentImage;
         let socket;
         let statusDiv;
+        let imageQueue = [];
+        let lastFrameTime = 0;
+        let frameDelay = 100; // 100ms jitter buffer
+        let intensity = 0;
+
+        // Simple Shader source
+        const vert = `
+            attribute vec3 aPosition;
+            attribute vec2 aTexCoord;
+            varying vec2 vTexCoord;
+            void main() {
+                vTexCoord = aTexCoord;
+                vec4 positionVec4 = vec4(aPosition, 1.0);
+                positionVec4.xy = positionVec4.xy * 2.0 - 1.0;
+                gl_Position = positionVec4;
+            }
+        `;
+
+        const frag = `
+            precision mediump float;
+            varying vec2 vTexCoord;
+            uniform sampler2D tex0;
+            uniform float intensity;
+
+            void main() {
+                vec2 uv = vTexCoord;
+                float aberration = 0.01 * intensity;
+                
+                vec4 r = texture2D(tex0, uv + vec2(aberration, 0.0));
+                vec4 g = texture2D(tex0, uv);
+                vec4 b = texture2D(tex0, uv - vec2(aberration, 0.0));
+                
+                vec4 color = vec4(r.r, g.g, b.b, 1.0);
+                
+                // Simple Bloom
+                float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+                if(brightness > 0.8) {
+                    color += color * intensity * 0.5;
+                }
+                
+                gl_FragColor = color;
+            }
+        `;
+
+        let postProcess;
 
         function setup() {
-            createCanvas(windowWidth, windowHeight);
+            createCanvas(windowWidth, windowHeight, WEBGL);
+            postProcess = createShader(vert, frag);
             statusDiv = document.getElementById('status');
-            
-            // Connect to the inference server websocket
             connectWebsocket();
         }
 
         function connectWebsocket() {
-            // Priority: URL Param > Config Object > Localhost Default
             const urlParams = new URLSearchParams(window.location.search);
             const backendParam = urlParams.get('backend');
-            
             let backendUrl = backendParam || (window.ANCEPS_CONFIG && window.ANCEPS_CONFIG.backendUrl);
             
             if (!backendUrl) {
-                // If we are on a custom domain, try to use that for the websocket as well
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const host = window.location.host;
-                backendUrl = `${protocol}//${host}/ws`;
-                
-                // If we are just opening the file locally, fallback to localhost
-                if (window.location.protocol === 'file:') {
-                    backendUrl = 'ws://localhost:8000/ws';
-                }
+                backendUrl = `${protocol}//${window.location.host}/ws`;
+                if (window.location.protocol === 'file:') backendUrl = 'ws://localhost:8000/ws';
             } else {
-                // Ensure it has the /ws suffix and correct protocol
-                if (!backendUrl.endsWith('/ws')) {
-                    backendUrl = backendUrl.replace(/\/$/, '') + '/ws';
-                }
+                if (!backendUrl.endsWith('/ws')) backendUrl = backendUrl.replace(/\/$/, '') + '/ws';
                 if (!backendUrl.startsWith('ws')) {
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     backendUrl = backendUrl.replace(/^http(s)?:\/\//, protocol + '//');
                 }
             }
 
-            console.log('Connecting to Anceps Backend:', backendUrl);
+            console.log('Connecting:', backendUrl);
             socket = new WebSocket(backendUrl);
-            
-            socket.onopen = () => {
-                statusDiv.innerText = 'CONNECTED';
-                statusDiv.style.color = '#0f0';
-            };
-
+            socket.onopen = () => { statusDiv.innerText = 'CONNECTED'; statusDiv.style.color = '#0f0'; };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'image' && data.payload) {
                     loadImage('data:image/png;base64,' + data.payload, img => {
-                        currentImage = img;
-                    });
-                } else if (data.type === 'video' && data.payload) {
-                    // For video, we'll just show the last frame for now
-                    const lastFrame = data.payload[data.payload.length - 1];
-                    loadImage('data:image/png;base64,' + lastFrame, img => {
-                        currentImage = img;
+                        imageQueue.push({img, time: millis(), intensity: data.metadata?.intensity || 0.5});
                     });
                 }
             };
-
-            socket.onclose = () => {
-                statusDiv.innerText = 'DISCONNECTED - RETRYING...';
-                statusDiv.style.color = '#f00';
-                setTimeout(connectWebsocket, 2000);
-            };
-
-            socket.onerror = (err) => {
-                console.error('Socket error:', err);
-            };
+            socket.onclose = () => { statusDiv.innerText = 'DISCONNECTED - RETRYING...'; statusDiv.style.color = '#f00'; setTimeout(connectWebsocket, 2000); };
         }
 
         function draw() {
             background(0);
-            if (currentImage) {
-                // Draw image centered and aspect-fit
-                let imgAspect = currentImage.width / currentImage.height;
-                let canvasAspect = width / height;
-                let drawW, drawH;
-                
-                if (imgAspect > canvasAspect) {
-                    drawW = width;
-                    drawH = width / imgAspect;
-                } else {
-                    drawH = height;
-                    drawW = height * imgAspect;
+            
+            // Jitter Buffer Logic
+            if (imageQueue.length > 0) {
+                const now = millis();
+                // If current item in queue has been buffered long enough
+                if (now - imageQueue[0].time > frameDelay) {
+                    const next = imageQueue.shift();
+                    currentImage = next.img;
+                    intensity = next.intensity;
                 }
+            }
+
+            if (currentImage) {
+                shader(postProcess);
+                postProcess.setUniform('tex0', currentImage);
+                postProcess.setUniform('intensity', intensity);
                 
-                image(currentImage, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+                // Draw plane to fill canvas
+                rect(-width/2, -height/2, width, height);
             } else {
-                // Placeholder visuals when no image is loaded
-                stroke(0, 255, 0, 50);
+                // Placeholder
+                resetShader();
                 noFill();
-                ellipse(width/2, height/2, sin(frameCount * 0.05) * 200 + 300);
+                stroke(0, 255, 0, 50);
+                ellipse(0, 0, sin(frameCount * 0.05) * 200 + 300);
             }
         }
 

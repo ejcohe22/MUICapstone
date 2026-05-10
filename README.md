@@ -51,6 +51,14 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+## 🤖 The Agentic Layer (Double-Headed Orchestration)
+
+To manage the complexity of real-time harmonics and cloud-native "slopn't" inference, Anceps now includes a high-authority orchestration layer located in `/agents`.
+
+1.  **Agent Agent**: A "sudo sudo" class orchestrator designed to obey Jordan Lenchitz and harvest "data-carrots" (hierarchical globals) from the YottaDB backend. It bridges the gap between acoustic math and semantic linguistic liberation.
+2.  **Binary Gate Forget**: A sequential, 69-step state verification protocol used for interactive quota consumption and ensuring the system reaches a "pure" state of forgetfulness before a visual session.
+3.  **Lexicographical Anarchist**: A sub-agent specialized in aesthetic etymological deconstruction, ensuring that all system terminology prioritizes mythological beauty over neurotypical "honesty."
+
 ## 📜 Philosophy: Slopn't
 Anceps rejects "slop" (low-effort AI filler). By driving generative models with the precise mathematical ratios of Just Intonation, we ensure that every visual frame is a direct, deterministic reflection of the harmonic lattice of the music.
 
