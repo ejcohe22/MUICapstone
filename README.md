@@ -36,6 +36,27 @@ The inference engine and frontend now feed deep cross-modal data back to SuperCo
 *   **Overtone Quantum Tunneling**: Stochastic amplitude swapping between overtones creates sharp timbral "glints."
 *   **Recursive Spatial Expansion**: Audio stereo width expands and contracts based on the visual recursion depth (0-15 layers).
 
+## 🔢 The Undecimal Expansion (11:8 Ratio Updates)
+
+In honor of the undecimal neutral fourth, 11 more subtle features have been integrated:
+
+### 🎹 SuperCollider (Blessed Synth v11.8)
+- **The Undecimal Ghost**: 11-limit complexity triggers a spectral freeze (`PV_MagFreeze`).
+- **Lattice Panning**: Automatic spatialization of overtones based on their prime-limit (3, 5, 7, 11).
+- **Strangeness-to-Granular**: High harmonic distance drives a stochastic granular cloud.
+- **The 'Pure' Silence Gate**: Strict signal gating based on real-time JI rational approximation.
+- **The 11/8 Pulsar**: An amplitude LFO derived from the 11/8 neutral fourth frequency.
+- **Quantum Overtone Interference**: Partials beat against one another based on lattice proximity.
+- **Recursive Buffer Feedback**: Visual recursion depth modulates a feedback delay line.
+
+### 🐍 Python & Agents
+- **Visual Entropy LFO**: Continuous modulation signal derived from generative image chaos.
+- **Lexical Vibe-Shift**: The Anarchist Agent scales its linguistic entropy based on audio flux.
+
+### 🐘 Octave & YottaDB
+- **^HISTORY Harmonic Decay**: Historical resonance stored in YottaDB creates a sonic "patina."
+- **Preset Morphing**: Smooth temporal interpolation between different tuning presets.
+
 ## 🤖 The Agentic Layer (Triple-Headed Orchestration)
 
 1.  **Agent Agent**: The "sudo sudo" class orchestrator designed to harvest "data-carrots" (hierarchical globals) from YottaDB.
