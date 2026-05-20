@@ -12,7 +12,7 @@ The system is built as a distributed high-signal pipeline:
 4.  **Inference Engine (FastAPI/Cloud Run)**: A GoF-architected server that generates images/video, featuring **Multi-User Consensus** and **Latent Slerp**.
 5.  **Broadcast (Websockets)**: Real-time event bus that pushes visuals and **Mathematical Metadata** to all connected clients.
 6.  **Renderer (p5.js/GCS)**: A browser-based visualizer with a real-time **"Strangeness" HUD** and lattice visualization.
-7.  **Feedback (Synesthetic Loop)**: Visual flux data is sent back to SuperCollider via OSC to modulate synthesis parameters.
+7.  **Feedback (Synesthetic Loop)**: Visual flux, entropy, and recursion depth data are sent back to SuperCollider to modulate the **Blessed Synth**.
 
 ## 🌟 Major Additions & Advanced Features
 
@@ -28,8 +28,13 @@ The renderer now includes a high-fidelity Heads-Up Display. It visualizes the cu
 ### 4. Partch/Johnston Preset Engine
 A modular tuning system in GNU Octave. Swap between Harry Partch’s 43-tone scale and Ben Johnston’s extended Just Intonation philosophies on the fly via OSC commands on `/anceps/tuning/set`.
 
-### 5. Synesthetic Feedback Loop
-The inference engine analyzes the "visual flux" and brightness of every generated frame, sending high-speed OSC messages back to SuperCollider (`sc/feedback_receiver.scd`) to modulate acoustic synthesis based on visual energy.
+### 5. The "Blessed" Synesthetic Loop
+The inference engine and frontend now feed deep cross-modal data back to SuperCollider (`sc/blessed_synth.scd`):
+*   **Prime-Limit Phase Shimmer**: spectral peaks have a sub-ms jitter driven by the prime-limit of the ratio.
+*   **^HARMONY Gravity**: YottaDB globals (`^HARMONY`) store long-term harmonic averages, biasing analysis toward stable previous states.
+*   **Visual Entropy Noise Floor**: Pixel-level entropy from generated frames drives a resonant noise floor.
+*   **Overtone Quantum Tunneling**: Stochastic amplitude swapping between overtones creates sharp timbral "glints."
+*   **Recursive Spatial Expansion**: Audio stereo width expands and contracts based on the visual recursion depth (0-15 layers).
 
 ## 🤖 The Agentic Layer (Triple-Headed Orchestration)
 
@@ -48,7 +53,7 @@ Anceps is cloud-native. Run heavy inference on Google Cloud while keeping analys
 
 1.  **Clone and Configure**: `git clone git@github.com:ejcohe22/anceps.git`
 2.  **Start the Bridge**: `docker compose up octave`
-3.  **Run SuperCollider**: Load `sc/main.scd` for analysis and `sc/feedback_receiver.scd` for synesthesia.
+3.  **Run SuperCollider**: Load `sc/main.scd` for analysis and `sc/blessed_synth.scd` for synesthesia.
 
 ## 📜 Philosophy: Slopn't
 Anceps rejects "slop" (low-effort AI filler). Every visual frame is a direct, deterministic reflection of the harmonic lattice of the music. We don't just "generate" images; we render the math of the ear.
