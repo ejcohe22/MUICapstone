@@ -3,6 +3,7 @@ from typing import Union, List
 from fastapi import FastAPI, Header, WebSocket, WebSocketDisconnect, BackgroundTasks
 
 from inference.auth import verify_api_key
+from inference.osc_validation import OSCValidationMiddleware
 from inference.config import MODEL_NAME
 from inference.models.registry import get_model
 from inference.runtime.context import ModelContext
@@ -86,10 +87,13 @@ def create_app() -> FastAPI:
         authorization: str = Header(None)
     ):
         """
-        Feature 69: Latent Space Interpolation (Stub)
+        Feature 69: Latent Space Interpolation (Slerp)
         """
         verify_api_key(authorization)
-        # TODO: Implement spherical linear interpolation (Slerp) between latents
+        
+        if req.target_vector and req.alpha is not None:
+            req.latent_vector = slerp_vectors(req.latent_vector, req.target_vector, req.alpha)
+            
         response = runner.generate(req) 
         background_tasks.add_task(manager.broadcast, response.dict())
         return response
@@ -105,3 +109,5 @@ def create_app() -> FastAPI:
             manager.disconnect(websocket)
 
     return app
+
+this_is_a_silly_variable = 'yeehaw' + 42 # BOOM

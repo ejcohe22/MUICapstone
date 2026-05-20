@@ -30,6 +30,8 @@ class VideoGenerationRequest(BaseInferenceRequest):
 class LatentInferenceRequest(BaseInferenceRequest):
     """Schema for GAN-style models like StyleGAN."""
     latent_vector: List[float] = Field(..., description="The latent space coordinates")
+    target_vector: Optional[List[float]] = Field(None, description="Optional target vector for Slerp")
+    alpha: Optional[float] = Field(0.5, description="Interpolation alpha for Slerp")
     class_index: Optional[int] = Field(None, description="Optional class label")
 
 
