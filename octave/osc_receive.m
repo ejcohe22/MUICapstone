@@ -66,9 +66,10 @@ function osc_receive(varargin)
   end
 
   % ── tuning presets setup ──────────────────────────────────────────────
-  % add tuning_presets to the path so we can call partch_43() etc.
+  % add tuning_presets and ji_math to the path so we can call math functions and presets.
   [parentdir, ~, ~] = fileparts(mfilename('fullpath'));
   addpath(fullfile(parentdir, 'tuning_presets'));
+  addpath(fullfile(parentdir, 'ji_math'));
 
   global CURRENT_TUNING_PHILOSOPHY;
   if isempty(CURRENT_TUNING_PHILOSOPHY)
@@ -116,6 +117,7 @@ function osc_receive(varargin)
             if arg == 0,     CURRENT_TUNING_PHILOSOPHY = 'none';
             elseif arg == 1, CURRENT_TUNING_PHILOSOPHY = 'partch_43';
             elseif arg == 2, CURRENT_TUNING_PHILOSOPHY = 'johnston_extended';
+            elseif arg == 3, CURRENT_TUNING_PHILOSOPHY = 'septimal_blues';
             end
           elseif ischar(arg)
             CURRENT_TUNING_PHILOSOPHY = arg;
@@ -133,6 +135,24 @@ function osc_receive(varargin)
 
       % ── form pairs and compute ratios ────────────────────────────────
       frame.pairs = compute_pairs(frame.peaks, opts);
+
+      % ── fetch and send riffs from YottaDB ────────────────────────────
+      % we define the "vibe threshold" as loudness > 0.7
+      if frame.loudness > 0.7
+        persistent last_riff_time;
+        if isempty(last_riff_time), last_riff_time = 0; end
+        
+        if (frame.wall_seconds - last_riff_time) > 2.0 % cooldown
+          riff = fetch_riff();
+          if ~isempty(riff)
+            % Send to SuperCollider on port 57120
+            osc_send_string('127.0.0.1', 57120, '/anceps/riff', riff);
+            last_riff_time = frame.wall_seconds;
+            printf('osc_receive: sent riff to SC: "%s"\n', riff);
+            fflush(stdout);
+          end
+        end
+      end
 
       % ── hand off to the callback ─────────────────────────────────────
       opts.callback(frame);
@@ -364,11 +384,18 @@ function pairs = compute_pairs(peaks, opts)
       r = harmony_gravity(r);
 
       global CURRENT_TUNING_PHILOSOPHY;
+      if strcmp(CURRENT_TUNING_PHILOSOPHY, 'septimal_blues')
+        r = septimal_shift(r);
+      end
+
       if strcmp(CURRENT_TUNING_PHILOSOPHY, 'partch_43')
         preset_ratios = partch_43();
         [num, den] = snap_to_preset(r, preset_ratios);
       elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'johnston_extended')
         preset_ratios = johnston_extended();
+        [num, den] = snap_to_preset(r, preset_ratios);
+      elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'septimal_blues')
+        preset_ratios = septimal_blues();
         [num, den] = snap_to_preset(r, preset_ratios);
       else
         [num, den] = rat_cap(r, opts.max_denom);

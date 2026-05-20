@@ -122,6 +122,29 @@ async def entropy_lfo_loop():
             pass
         await asyncio.sleep(0.05)
 
+async def data_carrot_loop(manager: ConnectionManager):
+    """
+    Simulates 'harvesting data-carrots' from YottaDB and broadcasts 
+    'visual_jitter' to the renderer via WebSocket.
+    """
+    while True:
+        try:
+            # Simulate querying a random node depth (e.g., 0-64)
+            simulated_depth = np.random.uniform(0, 64)
+            # Map depth to visual_jitter (0.0-1.0)
+            visual_jitter = np.clip(simulated_depth / 64.0, 0.0, 1.0)
+            
+            # Broadcast to renderer via WebSocket
+            await manager.broadcast({
+                "type": "metadata_update",
+                "field": "visual_jitter",
+                "value": float(visual_jitter)
+            })
+        except Exception:
+            pass
+        # Harvest every 0.8 seconds for a rhythmic "data-shimmer"
+        await asyncio.sleep(0.8)
+
 def analyze_and_send_osc(response: InferenceResponse):
     """
     Analyzes visual output for brightness, flux, entropy, and chaos, sending to SuperCollider.
@@ -267,6 +290,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         asyncio.create_task(entropy_lfo_loop())
+        asyncio.create_task(data_carrot_loop(manager))
 
     return app
 

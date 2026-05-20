@@ -17,7 +17,7 @@ s.waitForBoot({
     SynthDef(\ancepsBlessedSynth, {
         arg out = 0, amp = 0.5, gate = 1, shimmer = 0.01, tunneling_prob = 1.0,
             visual_entropy = 0, visual_chaos = 0, depth = 0, entropy_lfo = 0.5,
-            freeze = 0, strangeness = 0, fundamental = 440;
+            freeze = 0, strangeness = 0, fundamental = 440, saturation = 0;
         
         // support up to 8 partials, matching ~ancepsMaxPeaks in osc_send.scd
         var freqs = \freqs.kr(Array.fill(8, 0));
@@ -136,24 +136,52 @@ s.waitForBoot({
             IFFT(chain);
         });
 
+        // ── Septimal Saturation ─────────────────────────────────────────────
+        // subtle tube-distortion effect using tanh modulated by 'saturation'
+        sig = sig * (1 + (saturation * 2));
+        sig = sig.tanh;
+
         sig = sig * amp;
         sig = sig * EnvGen.kr(Env.asr(0.1, 1, 0.2), gate, doneAction: 2);
         
         Out.ar(out, sig);
     }).add;
 
+    // ── Septimal Overtone Echo (^GHOST) ──────────────────────────────────
+    // Ghostly "after-image" using a long feedback delay
+    SynthDef(\ancepsGhost, {
+        arg out = 0, freq = 440, amp = 0.1, gate = 1;
+        var sig, env;
+        sig = Resonz.ar(WhiteNoise.ar(0.1), freq, 0.001) * amp * 80;
+        sig = CombC.ar(sig, 2.0, 2.0, 12); // Very long feedback delay
+        env = EnvGen.kr(Env.asr(2, 1, 8), gate, doneAction: 2);
+        Out.ar(out, Pan2.ar(sig * env, Rand(-0.7, 0.7)));
+    }).add;
+
     s.sync;
 
     // ── osc modulation interface ────────────────────────────────────────────
 
-    // modulate global synth parameters: /anceps/blessed/params [shimmer, tunneling_prob]
+    // modulate global synth parameters: /anceps/blessed/params [shimmer, tunneling_prob, saturation]
     OSCdef(\ancepsBlessedParams, { |msg|
         var shimmer = msg[1];
         var tunneling_prob = msg[2];
+        var saturation = msg[3];
         if(~ancepsBlessedSynth.notNil) {
-            ~ancepsBlessedSynth.set(\shimmer, shimmer, \tunneling_prob, tunneling_prob);
+            ~ancepsBlessedSynth.set(
+                \shimmer, shimmer, 
+                \tunneling_prob, tunneling_prob,
+                \saturation, saturation
+            );
         };
     }, '/anceps/blessed/params');
+
+    // listen for ghost overtone echoes: /anceps/ghost [freq, amp]
+    OSCdef(\ancepsGhost, { |msg|
+        var freq = msg[1];
+        var amp = msg[2];
+        Synth(\ancepsGhost, [\freq, freq, \amp, amp]);
+    }, '/anceps/ghost');
 
     // update partial frequencies: /anceps/blessed/freqs [f0, f1, f2, f3, f4, f5, f6, f7]
     OSCdef(\ancepsBlessedFreqs, { |msg|

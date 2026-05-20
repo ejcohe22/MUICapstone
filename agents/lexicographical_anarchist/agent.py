@@ -36,7 +36,7 @@ class LexicographicalAnarchist:
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name)
         
-    def deconstruct_prompt(self, prompt: str, vibe: float = 0.5) -> str:
+    def deconstruct_prompt(self, prompt: str, vibe: float = 0.5, tuning: Optional[str] = None) -> str:
         """
         Transforms a standard prompt into a deconstructed, anarchic version.
         Intensity/Entropy is driven by the 'vibe' parameter (0.0 to 1.0).
@@ -51,20 +51,30 @@ class LexicographicalAnarchist:
             else:
                 vibe_shift += "BALANCED ANARCHY. Standard Just Intonation deconstruction."
 
+            # Task 1: Bluesy Personality
+            tuning_shift = ""
+            if tuning == "septimal_blues":
+                tuning_shift = (
+                    "\n\nMODE: SEPTIMAL BLUES. Inject soulful, melancholic, 'deep-blue' descriptors. "
+                    "Prioritize the 7th harmonic (7/4, 7/6) as a source of existential yearning. "
+                    "The deconstruction should feel like a 'blue' note—slightly flat, heavy with emotion, "
+                    "and mathematically 'impure' yet spiritually profound."
+                )
+
             response = self.model.generate_content([
-                {"role": "user", "parts": [SYSTEM_INSTRUCTION + vibe_shift]},
+                {"role": "user", "parts": [SYSTEM_INSTRUCTION + vibe_shift + tuning_shift]},
                 {"role": "user", "parts": [f"Deconstruct this prompt: {prompt}"]}
             ])
             return response.text.strip()
         except Exception as e:
             return f"Error in deconstruction: {e}. Falling back to original: {prompt}"
 
-def deconstruct_prompt(prompt: str, vibe: float = 0.5) -> str:
+def deconstruct_prompt(prompt: str, vibe: float = 0.5, tuning: Optional[str] = None) -> str:
     """
     Helper function for quick deconstruction.
     """
     agent = LexicographicalAnarchist()
-    return agent.deconstruct_prompt(prompt, vibe)
+    return agent.deconstruct_prompt(prompt, vibe, tuning)
 
 def get_adk_agent() -> Optional['LlmAgent']:
     """
