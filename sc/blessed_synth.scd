@@ -17,7 +17,8 @@ s.waitForBoot({
     SynthDef(\ancepsBlessedSynth, {
         arg out = 0, amp = 0.5, gate = 1, shimmer = 0.01, tunneling_prob = 1.0,
             visual_entropy = 0, visual_chaos = 0, depth = 0, entropy_lfo = 0.5,
-            freeze = 0, strangeness = 0, fundamental = 440, saturation = 0;
+            freeze = 0, strangeness = 0, fundamental = 440, saturation = 0,
+            formant = 0, glitch_density = 0, hilbert_shift = 0;
         
         // support up to 8 partials, matching ~ancepsMaxPeaks in osc_send.scd
         var freqs = \freqs.kr(Array.fill(8, 0));
@@ -26,6 +27,12 @@ s.waitForBoot({
         
         var partials, sig, trigger, toggle, swappedMags, noise;
         var gran_trigger, granular, pulsar_freq, pulsar, hidden_osc;
+        var glitch_trigger, glitch_env, comb_lattice, hilbert_sig;
+
+        // ── Aperiodic Glitch Generator ──────────────────────────────────────
+        // Use Dust.kr to trigger sudden, 17ms spectral gaps in the audio.
+        glitch_trigger = Dust.kr(glitch_density);
+        glitch_env = 1 - EnvGen.kr(Env([0, 1, 1, 0], [0, 0.017, 0]), glitch_trigger);
 
         // ── Overtone Quantum Tunneling ──────────────────────────────────────
         // logic (using Dust) that periodically and suddenly swaps the amplitudes 
@@ -54,15 +61,20 @@ s.waitForBoot({
         8.do { |i|
             var f = freqs[i];
             var m = swappedMags[i];
-            var jitter, phase;
+            var jitter, phase, p_sig;
             
             // tiny phase jitter (sub-millisecond). 0.001s is 1ms.
             // this is intended to be driven by the prime-limit of the ratio in the future.
             jitter = WhiteNoise.ar(shimmer * 0.001);
             phase = 2 * pi * f * jitter;
             
-            partials[i] = SinOsc.ar(f, phase) * m;
-            partials[i] = partials[i] + (noise / 8);
+            p_sig = SinOsc.ar(f, phase) * m;
+
+            // ── Spectral Formant Shift ──────────────────────────────────────
+            // Apply FreqShift.ar to each partial, modulated by 'formant'
+            p_sig = FreqShift.ar(p_sig, formant * (f / fundamental));
+
+            partials[i] = p_sig + (noise / 8);
         };
 
         // ── Quantum Overtone Interference ──────────────────────────────────
@@ -108,6 +120,42 @@ s.waitForBoot({
 
         sig = sig + Pan2.ar(hidden_osc, 0);
 
+        // ── Comb Filter Lattice (17/14) ────────────────────────────────────
+        // Parallel comb filters tuned to 17/14 harmonic ratios.
+        comb_lattice = [1, 17/14, (17/14).squared].collect({ |ratio|
+            CombC.ar(sig, 0.1, 1 / (fundamental * ratio), 0.5)
+        }).sum * 0.2;
+        sig = sig + comb_lattice;
+
+        // ── Septimal Hilbert Transform (SSB) ──────────────────────────────
+        // SSB frequency shifter using Hilbert.ar for wide spatialization.
+        // Link Hilbert width to 'depth' (0-15) by offsetting L/R phase.
+        hilbert_sig = Hilbert.ar(sig);
+        // Multiply by complex oscillator for shift: (R * cos) - (I * sin)
+        // [0, 1] array for phase offset between L and R
+        sig = (hilbert_sig[0] * SinOsc.ar(hilbert_shift, [0.5 * pi, 0.5 * pi + depth.linlin(0, 15, 0, pi)])) - 
+              (hilbert_sig[1] * SinOsc.ar(hilbert_shift, [0, depth.linlin(0, 15, 0, pi)]));
+
+        // ── Resonant Feedback Matrix (17x14) ──────────────────────────────
+        // 17 delay lines in a recursive matrix for 'infinite' sustain.
+        // Sustains when depth thresholds are met (mapped to feedback gain).
+        {
+            var fb_in = LocalIn.ar(17);
+            var matrix_sig, fb_gain;
+            
+            // Feedback gain reaches 1.0 at depth=14, and 1.01 at depth=15 for 'infinite' sustain.
+            fb_gain = depth.linlin(0, 14, 0, 1.0).max(0) + (depth > 14).if(0.01, 0);
+
+            matrix_sig = 17.collect({ |i|
+                var delayTime = (i + 1) * (17/14) / fundamental;
+                var s = sig.sum + (fb_in[i] * fb_gain);
+                DelayC.ar(s, 0.5, delayTime.wrap(0.001, 0.5))
+            });
+
+            LocalOut.ar(matrix_sig);
+            sig = sig + (Pan2.ar(matrix_sig.sum, SinOsc.kr(0.1)) * 0.15 * depth.linlin(0, 15, 0, 1));
+        }.();
+
         // ── Recursive Buffer Feedback ───────────────────────────────────────
         // depth is 0-15. Add a delay line with feedback (decay time).
         sig = CombC.ar(sig, 0.2, 0.2, depth.linlin(0, 15, 0, 6));
@@ -117,6 +165,9 @@ s.waitForBoot({
         gran_trigger = Dust.ar(strangeness.linexp(0, 1, 2, 200));
         granular = GrainSin.ar(2, gran_trigger, 0.05, freqs[0].max(20), 0);
         sig = sig + (granular * strangeness * 0.2);
+
+        // Apply Glitch Env
+        sig = sig * glitch_env;
 
         // ── 'Pure' Silence Gate ─────────────────────────────────────────────
         // Noise gate that only passes signal when 'strangeness' is below 0.5
@@ -162,16 +213,22 @@ s.waitForBoot({
 
     // ── osc modulation interface ────────────────────────────────────────────
 
-    // modulate global synth parameters: /anceps/blessed/params [shimmer, tunneling_prob, saturation]
+    // modulate global synth parameters: /anceps/blessed/params [shimmer, tunneling_prob, saturation, formant, glitch_density, hilbert_shift]
     OSCdef(\ancepsBlessedParams, { |msg|
         var shimmer = msg[1];
         var tunneling_prob = msg[2];
         var saturation = msg[3];
+        var formant = msg[4];
+        var glitch_density = msg[5];
+        var hilbert_shift = msg[6];
         if(~ancepsBlessedSynth.notNil) {
             ~ancepsBlessedSynth.set(
                 \shimmer, shimmer, 
                 \tunneling_prob, tunneling_prob,
-                \saturation, saturation
+                \saturation, saturation,
+                \formant, formant,
+                \glitch_density, glitch_density,
+                \hilbert_shift, hilbert_shift
             );
         };
     }, '/anceps/blessed/params');

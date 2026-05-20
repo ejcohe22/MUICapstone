@@ -1,10 +1,12 @@
 from typing import Union, List, Optional, Dict
 import asyncio
 import base64
+import httpx
 from io import BytesIO
 
 import numpy as np
 from PIL import Image
+from scipy.signal import convolve2d
 from pythonosc import udp_client
 
 from fastapi import FastAPI, Header, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException
@@ -23,6 +25,9 @@ from inference.schemas import (
     InferenceResponse,
     OutputType,
 )
+from agents.lexicographical_anarchist.agent import deconstruct_prompt
+
+YDB_API_BASE = "http://localhost:8080/api"
 
 # Define a Union for all possible request types
 AnyInferenceRequest = Union[
@@ -104,6 +109,7 @@ class FeedbackState:
         self.last_entropy = 0.5
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 57120)
         self.lfo_phase = 0.0
+        self.latest_genotype: Optional[float] = None
 
 feedback_state = FeedbackState()
 
@@ -145,19 +151,51 @@ async def data_carrot_loop(manager: ConnectionManager):
         # Harvest every 0.8 seconds for a rhythmic "data-shimmer"
         await asyncio.sleep(0.8)
 
+async def genetic_algo_loop(manager: ConnectionManager):
+    """
+    Simulates 'genetic crossover' between previous prompt results stored in YottaDB globals.
+    Broadcasts 'mutation_rate' metadata via WebSocket.
+    """
+    while True:
+        try:
+            # Simulate fetching 'genotypes' from YottaDB
+            async with httpx.AsyncClient() as client:
+                # In a real scenario, we'd fetch actual prompt data from a global like ^PROMPTS
+                # For now, we simulate the 'harvest'
+                m_code = 'K ^TMP("ALGO") S ^TMP("ALGO",$I(^TMP("ALGO")))=$R(100)'
+                await client.post(f"{YDB_API_BASE}/execute", json={"mCode": m_code})
+            
+            # Simulate mutation rate calculation
+            mutation_rate = np.random.uniform(0.01, 0.17)
+            feedback_state.latest_genotype = float(mutation_rate)
+            
+            await manager.broadcast({
+                "type": "metadata_update",
+                "field": "mutation_rate",
+                "value": float(mutation_rate)
+            })
+        except Exception:
+            pass
+        # Rhythmic evolution every 1.7 seconds
+        await asyncio.sleep(1.7)
+
 def analyze_and_send_osc(response: InferenceResponse):
     """
     Analyzes visual output for brightness, flux, entropy, and chaos, sending to SuperCollider.
+    Also calculates 'High-Frequency Noise' (grain) density.
     """
     try:
         brightness = None
         entropy = None
+        grain = None
         if response.type == OutputType.IMAGE and isinstance(response.payload, str):
             brightness = _calculate_brightness(response.payload)
             entropy = _calculate_entropy(response.payload)
+            grain = _calculate_grain(response.payload)
         elif response.type == OutputType.VIDEO and isinstance(response.payload, list) and len(response.payload) > 0:
             brightness = _calculate_brightness(response.payload[0])
             entropy = _calculate_entropy(response.payload[0])
+            grain = _calculate_grain(response.payload[0])
             
         if brightness is not None:
             flux = abs(brightness - feedback_state.last_brightness)
@@ -172,6 +210,9 @@ def analyze_and_send_osc(response: InferenceResponse):
             
             feedback_state.osc_client.send_message("/visual/entropy", float(entropy))
             feedback_state.osc_client.send_message("/visual/chaos", float(chaos))
+
+        if grain is not None:
+            feedback_state.osc_client.send_message("/visual/grain", float(grain))
     except Exception:
         # Avoid crashing background tasks
         pass
@@ -190,6 +231,17 @@ def _calculate_entropy(b64_data: str) -> float:
     hist = hist[hist > 0]
     # Max entropy for 8-bit image is 8 bits (log2(256))
     return float(-np.sum(hist * np.log2(hist)) / 8.0)
+
+def _calculate_grain(b64_data: str) -> float:
+    """Calculates High-Frequency Noise (grain) density using variance of Laplacian."""
+    img_bytes = base64.b64decode(b64_data)
+    img = Image.open(BytesIO(img_bytes)).convert("L")
+    arr = np.array(img, dtype=np.float32)
+    # Simple Laplacian kernel
+    kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
+    laplacian = convolve2d(arr, kernel, mode='same')
+    # Normalized variance as grain density
+    return float(np.var(laplacian) / 10000.0)
 
 manager = ConnectionManager()
 
@@ -233,6 +285,17 @@ def create_app() -> FastAPI:
         Main inference endpoint. Executes in background to avoid blocking.
         """
         verify_api_key(authorization)
+
+        # Traditional 17 Expansion: Genetic Prompt Mutation
+        if isinstance(req, ImageGenerationRequest):
+            vibe = feedback_state.latest_genotype or 0.5
+            # Tuning defaults to traditional_17 for this expansion push
+            tuning = "traditional_17"
+            # Oasis Silence Mode: check audio duration (mocked via genotype if not present)
+            audio_duration = req.metadata.get("audio_duration", 2.0) if req.metadata else 2.0
+            
+            req.prompt = deconstruct_prompt(req.prompt, vibe=vibe, tuning=tuning, audio_duration=audio_duration)
+        
         response = runner.generate(req)
         
         # Pass metadata from request to response
@@ -291,6 +354,7 @@ def create_app() -> FastAPI:
     async def startup_event():
         asyncio.create_task(entropy_lfo_loop())
         asyncio.create_task(data_carrot_loop(manager))
+        asyncio.create_task(genetic_algo_loop(manager))
 
     return app
 

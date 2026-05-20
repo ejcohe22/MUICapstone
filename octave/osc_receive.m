@@ -134,7 +134,7 @@ function osc_receive(varargin)
       end
 
       % ── form pairs and compute ratios ────────────────────────────────
-      frame.pairs = compute_pairs(frame.peaks, opts);
+      frame.pairs = compute_pairs(frame.peaks, opts, frame.frame_number);
 
       % ── fetch and send riffs from YottaDB ────────────────────────────
       % we define the "vibe threshold" as loudness > 0.7
@@ -151,6 +151,16 @@ function osc_receive(varargin)
             printf('osc_receive: sent riff to SC: "%s"\n', riff);
             fflush(stdout);
           end
+        end
+      end
+
+      % ── Dynamic Prime Pruning ────────────────────────────────────────
+      if ~isempty(frame.pairs)
+        all_primes = [frame.pairs.prime_factors];
+        if ~isempty(all_primes)
+          max_prime = max([all_primes, 3]);
+          % Send to SC to prune partials not in the active prime limit
+          osc_send('127.0.0.1', 57120, '/anceps/prime_limit', max_prime);
         end
       end
 
@@ -345,7 +355,7 @@ end
 % ratio formation
 % ══════════════════════════════════════════════════════════════════════════
 
-function pairs = compute_pairs(peaks, opts)
+function pairs = compute_pairs(peaks, opts, frame_number)
 % for each unordered pair of peaks, compute the rational approximation
 % and run it through affect and blend. peaks shorter than 2 rows
 % produces an empty struct array.
@@ -388,15 +398,23 @@ function pairs = compute_pairs(peaks, opts)
         r = septimal_shift(r);
       end
 
-      if strcmp(CURRENT_TUNING_PHILOSOPHY, 'partch_43')
-        preset_ratios = partch_43();
-        [num, den] = snap_to_preset(r, preset_ratios);
-      elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'johnston_extended')
-        preset_ratios = johnston_extended();
-        [num, den] = snap_to_preset(r, preset_ratios);
-      elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'septimal_blues')
-        preset_ratios = septimal_blues();
-        [num, den] = snap_to_preset(r, preset_ratios);
+      % ── Aperiodic Ratio Snapping ────────────────────────────────────
+      % Only snap ratios to presets on prime-numbered frames.
+      do_snap = isprime(frame_number) && ~strcmp(CURRENT_TUNING_PHILOSOPHY, 'none');
+
+      if do_snap
+        if strcmp(CURRENT_TUNING_PHILOSOPHY, 'partch_43')
+          preset_ratios = partch_43();
+          [num, den] = snap_to_preset(r, preset_ratios);
+        elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'johnston_extended')
+          preset_ratios = johnston_extended();
+          [num, den] = snap_to_preset(r, preset_ratios);
+        elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'septimal_blues')
+          preset_ratios = septimal_blues();
+          [num, den] = snap_to_preset(r, preset_ratios);
+        else
+          [num, den] = rat_cap(r, opts.max_denom);
+        end
       else
         [num, den] = rat_cap(r, opts.max_denom);
       end
@@ -407,8 +425,16 @@ function pairs = compute_pairs(peaks, opts)
         %  swap to enforce ratio >= 1)
         tmp = num; num = den; den = tmp;
       end
+      
       % now hand to the math layer
       strangeness = affect('strangeness', num, den);
+      
+      % ── Lattice Mirroring ───────────────────────────────────────────
+      % Flip ratios (1/x -> x/1) when 'strangeness' > 0.8
+      if strangeness > 0.8
+        tmp = num; num = den; den = tmp;
+      end
+
       blend_name  = blend('name', num, den);
       prime_char  = affect('prime_character', num, den);
 

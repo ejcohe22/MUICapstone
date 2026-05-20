@@ -36,11 +36,15 @@ class LexicographicalAnarchist:
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name)
         
-    def deconstruct_prompt(self, prompt: str, vibe: float = 0.5, tuning: Optional[str] = None) -> str:
+    def deconstruct_prompt(self, prompt: str, vibe: float = 0.5, tuning: Optional[str] = None, audio_duration: float = 2.0) -> str:
         """
         Transforms a standard prompt into a deconstructed, anarchic version.
         Intensity/Entropy is driven by the 'vibe' parameter (0.0 to 1.0).
+        'The Oasis' Silence Mode returns an empty string if audio_duration < 1.7.
         """
+        if audio_duration < 1.7:
+            return "" # The Oasis: Silence Mode
+
         try:
             # Adjust instruction based on vibe (audio flux intensity)
             vibe_shift = f"\n\nCurrent Vibe Intensity: {vibe:.2f}. "
@@ -51,7 +55,7 @@ class LexicographicalAnarchist:
             else:
                 vibe_shift += "BALANCED ANARCHY. Standard Just Intonation deconstruction."
 
-            # Task 1: Bluesy Personality
+            # Task 1: Tuning Modes
             tuning_shift = ""
             if tuning == "septimal_blues":
                 tuning_shift = (
@@ -59,6 +63,13 @@ class LexicographicalAnarchist:
                     "Prioritize the 7th harmonic (7/4, 7/6) as a source of existential yearning. "
                     "The deconstruction should feel like a 'blue' note—slightly flat, heavy with emotion, "
                     "and mathematically 'impure' yet spiritually profound."
+                )
+            elif tuning == "traditional_17":
+                tuning_shift = (
+                    "\n\nMODE: PROPHETIC (TRADITIONAL 17). Invoke the desert, the ancient sands, and the 17-limit intervals. "
+                    "Use ratios like 15/14 (septimal major semitone), 17/14, and 17/10. "
+                    "The language should be prophetic, apocalyptic, and deeply rooted in Middle Eastern harmonic traditions. "
+                    "Speak of the 'Oasis of 17 Ratios' and the 'Sand-worn Prophecy'."
                 )
 
             response = self.model.generate_content([
@@ -69,12 +80,12 @@ class LexicographicalAnarchist:
         except Exception as e:
             return f"Error in deconstruction: {e}. Falling back to original: {prompt}"
 
-def deconstruct_prompt(prompt: str, vibe: float = 0.5, tuning: Optional[str] = None) -> str:
+def deconstruct_prompt(prompt: str, vibe: float = 0.5, tuning: Optional[str] = None, audio_duration: float = 2.0) -> str:
     """
     Helper function for quick deconstruction.
     """
     agent = LexicographicalAnarchist()
-    return agent.deconstruct_prompt(prompt, vibe, tuning)
+    return agent.deconstruct_prompt(prompt, vibe, tuning, audio_duration)
 
 def get_adk_agent() -> Optional['LlmAgent']:
     """

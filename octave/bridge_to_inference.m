@@ -57,6 +57,25 @@ function bridge_to_inference(frame)
     % Also direct set for simplicity if script doesn't exist
     system(sprintf('ydb -expr "SET ^HARMONY=%f,^HARMONY(\"strangeness\")=%f,^HARMONY(\"prime_limit\")=%f"', new_h, new_s, new_pl));
 
+    % ── ^TIME Temporal Compression ──────────────────────────────────────
+    % Record timestamps in ^TIME, calculate 'urgency' based on jitter
+    [st, res] = system('ydb -expr "^TIME" 2>/dev/null');
+    if st == 0 && ~isempty(res), last_t = str2double(res); else, last_t = frame.wall_seconds; end
+    [st, res] = system('ydb -expr "^TIME(\"delta\")" 2>/dev/null');
+    if st == 0 && ~isempty(res), last_delta = str2double(res); else, last_delta = 0.033; end
+
+    curr_delta = frame.wall_seconds - last_t;
+    jitter = abs(curr_delta - last_delta);
+    urgency = min(jitter * 100, 1.0); % scale jitter to urgency 0-1
+
+    system(sprintf('ydb -expr "SET ^TIME=%f,^TIME(\"delta\")=%f"', frame.wall_seconds, curr_delta));
+
+    % ── ^SAND Visual Grain Metadata ─────────────────────────────────────
+    % Fetch "grit" from YottaDB ^SAND
+    [st, res] = system('ydb -expr "^SAND" 2>/dev/null');
+    if st == 0 && ~isempty(res), grit = str2double(res); else, grit = 0; end
+    if isnan(grit), grit = 0; end
+
     % map strangeness to visual adjectives
     if p.strangeness < 0.4
       complexity_str = 'smooth harmonic curves, liquid gold, pure resonance';
@@ -69,9 +88,17 @@ function bridge_to_inference(frame)
     % map blend_name (from ji_math) to visual themes
     % blend names are like 'power-sweetness', 'blue-alien', etc.
     theme_str = strrep(p.blend_name, '-', ' and ');
-    
+
     prompt = sprintf('abstract generative art representing %s, %s, driven by %0.f hz and %0.f hz peaks, intensity %.2f%s', ...
                      theme_str, complexity_str, p.freq_high, p.freq_low, frame.loudness, tuning_str);
+
+    % Append metadata-driven descriptors
+    if grit > 0.5
+      prompt = [prompt ', hyper-detailed granular textures'];
+    end
+    if urgency > 0.5
+      prompt = [prompt ', high urgency temporal compression'];
+    end
   end
 
   % ── execution ────────────────────────────────────────────────────────
