@@ -360,6 +360,9 @@ function pairs = compute_pairs(peaks, opts)
         r = r / 2;
       end
 
+      % Apply ^HARMONY Gravity bias
+      r = harmony_gravity(r);
+
       global CURRENT_TUNING_PHILOSOPHY;
       if strcmp(CURRENT_TUNING_PHILOSOPHY, 'partch_43')
         preset_ratios = partch_43();

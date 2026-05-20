@@ -24,6 +24,39 @@ function bridge_to_inference(frame)
     [~, idx] = max([frame.pairs.salience]);
     p = frame.pairs(idx);
     
+    % ── YottaDB ^HARMONY Gravity Update ──────────────────────────────────
+    % Update the long-term harmonic average (^HARMONY) with a running average
+    % of the current strongest ratio and its strangeness.
+    % alpha is the smoothing factor for the long-term average.
+    alpha = 0.05;
+    curr_ratio = p.num / p.den;
+    curr_strange = p.strangeness;
+
+    % Fetch old values from YottaDB (defaulting if not found)
+    [st, res] = system('ydb -expr "^HARMONY" 2>/dev/null');
+    if st == 0 && ~isempty(res), old_h = str2double(res); else, old_h = 1.5; end
+    [st, res] = system('ydb -expr "^HARMONY(\"strangeness\")" 2>/dev/null');
+    if st == 0 && ~isempty(res), old_s = str2double(res); else, old_s = 0.4; end
+    [st, res] = system('ydb -expr "^HARMONY(\"prime_limit\")" 2>/dev/null');
+    if st == 0 && ~isempty(res), old_pl = str2double(res); else, old_pl = 3; end
+
+    if isnan(old_h), old_h = 1.5; end
+    if isnan(old_s), old_s = 0.4; end
+    if isnan(old_pl), old_pl = 3; end
+
+    % Compute running average (log space for ratio)
+    new_h = 2^(log2(old_h) * (1 - alpha) + log2(curr_ratio) * alpha);
+    new_s = old_s * (1 - alpha) + curr_strange * alpha;
+    
+    curr_pl = max([p.prime_factors, 3]); % 3 is the base prime above 2
+    new_pl = old_pl * (1 - alpha) + curr_pl * alpha;
+
+    % Persist back to YottaDB using a dummy shell command as requested.
+    % We use 'SET_HARMONY' as the dummy script name.
+    system(sprintf('ydb -run SET_HARMONY %f %f %f', new_h, new_s, new_pl));
+    % Also direct set for simplicity if script doesn't exist
+    system(sprintf('ydb -expr "SET ^HARMONY=%f,^HARMONY(\"strangeness\")=%f,^HARMONY(\"prime_limit\")=%f"', new_h, new_s, new_pl));
+
     % map strangeness to visual adjectives
     if p.strangeness < 0.4
       complexity_str = 'smooth harmonic curves, liquid gold, pure resonance';

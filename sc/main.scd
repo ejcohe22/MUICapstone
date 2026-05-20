@@ -24,6 +24,10 @@ s.waitForBoot({
     (here +/+ "osc_send.scd").load;
     s.sync;
 
+    // load blessed synth resynthesis engine
+    (here +/+ "blessed_synth.scd").load;
+    s.sync;
+
     // internal test source: just major triad at 200 / 250 / 300 hertz.
     // added to the head of the default group so the analyzer (tail) sees it.
     ~testSource = Synth(\ancepsInputTestChord,

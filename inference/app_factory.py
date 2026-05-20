@@ -101,20 +101,24 @@ class ConnectionManager:
 class FeedbackState:
     def __init__(self):
         self.last_brightness = 0.5
+        self.last_entropy = 0.5
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 57120)
 
 feedback_state = FeedbackState()
 
 def analyze_and_send_osc(response: InferenceResponse):
     """
-    Analyzes visual output for brightness and flux, sending to SuperCollider.
+    Analyzes visual output for brightness, flux, entropy, and chaos, sending to SuperCollider.
     """
     try:
         brightness = None
+        entropy = None
         if response.type == OutputType.IMAGE and isinstance(response.payload, str):
             brightness = _calculate_brightness(response.payload)
+            entropy = _calculate_entropy(response.payload)
         elif response.type == OutputType.VIDEO and isinstance(response.payload, list) and len(response.payload) > 0:
             brightness = _calculate_brightness(response.payload[0])
+            entropy = _calculate_entropy(response.payload[0])
             
         if brightness is not None:
             flux = abs(brightness - feedback_state.last_brightness)
@@ -122,6 +126,13 @@ def analyze_and_send_osc(response: InferenceResponse):
             
             feedback_state.osc_client.send_message("/visual/brightness", float(brightness))
             feedback_state.osc_client.send_message("/visual/flux", float(flux))
+
+        if entropy is not None:
+            chaos = abs(entropy - feedback_state.last_entropy)
+            feedback_state.last_entropy = entropy
+            
+            feedback_state.osc_client.send_message("/visual/entropy", float(entropy))
+            feedback_state.osc_client.send_message("/visual/chaos", float(chaos))
     except Exception:
         # Avoid crashing background tasks
         pass
@@ -130,6 +141,16 @@ def _calculate_brightness(b64_data: str) -> float:
     img_bytes = base64.b64decode(b64_data)
     img = Image.open(BytesIO(img_bytes)).convert("L")
     return float(np.mean(np.array(img)) / 255.0)
+
+def _calculate_entropy(b64_data: str) -> float:
+    """Calculates normalized pixel entropy (0.0-1.0)."""
+    img_bytes = base64.b64decode(b64_data)
+    img = Image.open(BytesIO(img_bytes)).convert("L")
+    arr = np.array(img).flatten()
+    hist, _ = np.histogram(arr, bins=256, range=(0, 255), density=True)
+    hist = hist[hist > 0]
+    # Max entropy for 8-bit image is 8 bits (log2(256))
+    return float(-np.sum(hist * np.log2(hist)) / 8.0)
 
 manager = ConnectionManager()
 
@@ -214,13 +235,17 @@ def create_app() -> FastAPI:
         return response
 
     @app.websocket("/ws")
-    async def websocket_endpoint(websocket: WebSocket):
-        await manager.connect(websocket)
+    async def websocket_endpoint(websocket: WebSocket, user_id: Optional[str] = None):
+        if not user_id:
+            user_id = f"user_{id(websocket)}"
+        await manager.connect(websocket, user_id)
         try:
             while True:
-                # Keep connection alive
-                await websocket.receive_text()
-        except WebSocketDisconnect:
+                data = await websocket.receive_json()
+                if isinstance(data, dict) and data.get("type") == "depth":
+                    depth = data.get("value", 0)
+                    feedback_state.osc_client.send_message("/site/depth", float(depth))
+        except (WebSocketDisconnect, Exception):
             manager.disconnect(websocket)
 
     return app

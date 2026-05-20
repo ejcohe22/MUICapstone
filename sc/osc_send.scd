@@ -118,6 +118,20 @@ OSCdef(\ancepsDescriptors, { |msg|
             var peakPayload = peaks.collect { |pair| pair }.flat;
             var wallClockSeconds = SystemClock.seconds;
 
+            // update the blessed resynthesis synth if it is active
+            if(~ancepsBlessedSynth.notNil) {
+                var fArray = Array.fill(8, 0);
+                var mArray = Array.fill(8, 0);
+                peaks.do { |pair, i|
+                    if(i < 8) {
+                        fArray[i] = pair[0];
+                        mArray[i] = pair[1];
+                    }
+                };
+                ~ancepsBlessedSynth.setn(\freqs, fArray);
+                ~ancepsBlessedSynth.setn(\mags, mArray);
+            };
+
             // atomic bundle. three messages go out with a single timestamp
             // so the downstream side can treat them as one frame.
             ~ancepsTarget.sendBundle(0,
@@ -145,6 +159,7 @@ OSCdef(\ancepsDescriptors, { |msg|
 ~ancepsStart = {
     if(~ancepsRunning.not) {
         ~ancepsRunning = true;
+        ~ancepsBlessedStart.();
         ~ancepsTick.();
         "anceps sender: running".postln;
         "  target: ".post; ~ancepsTarget.postln;
@@ -154,6 +169,7 @@ OSCdef(\ancepsDescriptors, { |msg|
 
 ~ancepsStop = {
     ~ancepsRunning = false;
+    ~ancepsBlessedStop.();
     "anceps sender: stopped".postln;
 };
 
