@@ -32,6 +32,7 @@
     <div id="status">CONNECTING TO INFERENCE...</div>
     <script>
         let currentImage;
+        let currentMetadata;
         let socket;
         let statusDiv;
         let imageQueue = [];
@@ -111,7 +112,12 @@
                 const data = JSON.parse(event.data);
                 if (data.type === 'image' && data.payload) {
                     loadImage('data:image/png;base64,' + data.payload, img => {
-                        imageQueue.push({img, time: millis(), intensity: data.metadata?.intensity || 0.5});
+                        imageQueue.push({
+                            img, 
+                            time: millis(), 
+                            intensity: data.metadata?.intensity || 0.5,
+                            metadata: data.metadata
+                        });
                     });
                 }
             };
@@ -129,6 +135,7 @@
                     const next = imageQueue.shift();
                     currentImage = next.img;
                     intensity = next.intensity;
+                    currentMetadata = next.metadata;
                 }
             }
 
@@ -146,6 +153,53 @@
                 stroke(0, 255, 0, 50);
                 ellipse(0, 0, sin(frameCount * 0.05) * 200 + 300);
             }
+
+            drawHUD();
+        }
+
+        function drawHUD() {
+            if (!currentMetadata) return;
+            
+            push();
+            resetShader();
+            
+            const hudX = -width/2 + 30;
+            const hudY = height/2 - 110;
+            
+            fill(0, 255, 0);
+            noStroke();
+            textSize(16);
+            textFont('Courier New');
+            
+            const strangeness = currentMetadata.strangeness !== undefined ? currentMetadata.strangeness : 'N/A';
+            const primeLimit = currentMetadata.prime_limit !== undefined ? currentMetadata.prime_limit : 'N/A';
+            const blendName = currentMetadata.blend_name !== undefined ? currentMetadata.blend_name : 'N/A';
+            
+            text(`// STRANGENESS: ${strangeness}`, hudX, hudY);
+            text(`// PRIME LIMIT: ${primeLimit}`, hudX, hudY + 25);
+            text(`// BLEND NAME:  ${blendName}`, hudX, hudY + 50);
+            
+            // Aesthetic geometric lines
+            stroke(0, 255, 0, 180);
+            strokeWeight(1);
+            line(hudX - 10, hudY - 20, hudX - 10, hudY + 65);
+            line(hudX - 10, hudY - 20, hudX + 250, hudY - 20);
+            
+            // Mathematical Lattice (Geometric representation)
+            const latX = width/2 - 180;
+            const latY = height/2 - 180;
+            const size = 120;
+            const steps = parseInt(primeLimit) || 5;
+            const density = parseFloat(strangeness) || 1.0;
+            
+            stroke(0, 255, 0, 80);
+            for(let i = 0; i <= steps; i++) {
+                let offset = i * (size / steps);
+                line(latX + offset, latY, latX + offset + (density * 15), latY + size);
+                line(latX, latY + offset, latX + size, latY + offset + (density * 15));
+            }
+            
+            pop();
         }
 
         function windowResized() {

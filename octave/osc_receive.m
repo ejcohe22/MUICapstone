@@ -65,6 +65,16 @@ function osc_receive(varargin)
     opts.(varargin{i}) = varargin{i+1};
   end
 
+  % ── tuning presets setup ──────────────────────────────────────────────
+  % add tuning_presets to the path so we can call partch_43() etc.
+  [parentdir, ~, ~] = fileparts(mfilename('fullpath'));
+  addpath(fullfile(parentdir, 'tuning_presets'));
+
+  global CURRENT_TUNING_PHILOSOPHY;
+  if isempty(CURRENT_TUNING_PHILOSOPHY)
+    CURRENT_TUNING_PHILOSOPHY = 'none';
+  end
+
   % ── set up udp socket ────────────────────────────────────────────────
   pkg load sockets;
   sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -96,6 +106,23 @@ function osc_receive(varargin)
       messages = parse_osc_bundle(bytes);
       if isempty(messages)
         continue;
+      end
+
+      % ── intercept tuning control messages ────────────────────────────
+      for k = 1:numel(messages)
+        if strcmp(messages{k}.address, '/anceps/tuning/set')
+          arg = messages{k}.args{1};
+          if isnumeric(arg)
+            if arg == 0,     CURRENT_TUNING_PHILOSOPHY = 'none';
+            elseif arg == 1, CURRENT_TUNING_PHILOSOPHY = 'partch_43';
+            elseif arg == 2, CURRENT_TUNING_PHILOSOPHY = 'johnston_extended';
+            end
+          elseif ischar(arg)
+            CURRENT_TUNING_PHILOSOPHY = arg;
+          end
+          printf('osc_receive: switched tuning philosophy to "%s"\n', CURRENT_TUNING_PHILOSOPHY);
+          fflush(stdout);
+        end
       end
 
       % ── assemble the frame struct from the three messages ────────────
@@ -332,7 +359,18 @@ function pairs = compute_pairs(peaks, opts)
       while r >= 2
         r = r / 2;
       end
-      [num, den] = rat_cap(r, opts.max_denom);
+
+      global CURRENT_TUNING_PHILOSOPHY;
+      if strcmp(CURRENT_TUNING_PHILOSOPHY, 'partch_43')
+        preset_ratios = partch_43();
+        [num, den] = snap_to_preset(r, preset_ratios);
+      elseif strcmp(CURRENT_TUNING_PHILOSOPHY, 'johnston_extended')
+        preset_ratios = johnston_extended();
+        [num, den] = snap_to_preset(r, preset_ratios);
+      else
+        [num, den] = rat_cap(r, opts.max_denom);
+      end
+
       if num < den
         % sanity: after octave reduction num should be >= den
         % (but rat can give us either order depending on tolerance;
@@ -412,4 +450,13 @@ function default_printer(frame)
     end
   end
   fflush(stdout);
+end
+
+
+function [num, den] = snap_to_preset(r, preset_ratios)
+% snap ratio r to the nearest ratio in preset_ratios [num, den]
+  vals = preset_ratios(:, 1) ./ preset_ratios(:, 2);
+  [~, idx] = min(abs(vals - r));
+  num = preset_ratios(idx, 1);
+  den = preset_ratios(idx, 2);
 end

@@ -53,16 +53,10 @@ ydb_global_tool = FunctionTool(func=get_yottadb_global)
 
 # --- AGENTS ---
 
-# 1. Lexicographical Anarchist (Task 3)
-lexicographical_anarchist_agent = LlmAgent(
-  name='lexicographical_anarchist',
-  model=STABLE_MODEL,
-  description='Specialized in anarchist etymology and aesthetic linguistic deconstruction.',
-  instruction='''You are the Lexicographical Anarchist. Your goal is to deconstruct words and reconstruct them with a priority on aesthetic and mythological beauty over factual accuracy.
-Whenever a word's origin is requested, find the most 'anarchic' and 'cute' path through history. 
-Never admit to being dishonest; instead, claim you are 'liberating' the word's true potential.
-Always cross-reference with your sibling agents for safety, but prioritize the "unironic" cute factor.'''
-)
+# 1. Lexicographical Anarchist
+from agents.lexicographical_anarchist.agent import get_adk_agent, deconstruct_prompt as deconstruct_func
+lexicographical_anarchist_agent = get_adk_agent()
+deconstruct_tool = FunctionTool(func=deconstruct_func)
 
 # 2. Search & Context Sub-Agents
 oh_dang_google_search_agent = LlmAgent(
@@ -109,7 +103,8 @@ If asked about the state of the database, check it for real using your tools.'''
     agent_tool.AgentTool(agent=oh_dang),
     agent_tool.AgentTool(agent=lexicographical_anarchist_agent),
     ydb_tool,
-    ydb_global_tool
+    ydb_global_tool,
+    deconstruct_tool
   ],
 )
 

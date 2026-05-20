@@ -13,6 +13,7 @@ class OutputType(str, Enum):
 class BaseInferenceRequest(BaseModel):
     """Base class for all inference requests."""
     seed: Optional[int] = Field(None, description="Random seed for reproducibility")
+    metadata: Optional[dict] = Field(None, description="Additional metadata for the request (e.g. strangeness)")
 
 
 class ImageGenerationRequest(BaseInferenceRequest):
@@ -33,6 +34,12 @@ class LatentInferenceRequest(BaseInferenceRequest):
     target_vector: Optional[List[float]] = Field(None, description="Optional target vector for Slerp")
     alpha: Optional[float] = Field(0.5, description="Interpolation alpha for Slerp")
     class_index: Optional[int] = Field(None, description="Optional class label")
+
+
+class ConsensusRequest(BaseModel):
+    """Schema for multi-user latent consensus submission."""
+    user_id: str = Field(..., description="Unique identifier for the user")
+    latent_vector: List[float] = Field(..., description="The user's contribution to the latent space")
 
 
 class InferenceResponse(BaseModel):

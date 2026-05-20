@@ -10,8 +10,15 @@ function bridge_to_inference(frame)
   end
 
   % ── prompt construction ──────────────────────────────────────────────
+  global CURRENT_TUNING_PHILOSOPHY;
+  if isempty(CURRENT_TUNING_PHILOSOPHY)
+    tuning_str = '';
+  else
+    tuning_str = sprintf(', tuned to %s', strrep(CURRENT_TUNING_PHILOSOPHY, '_', ' '));
+  end
+
   if isempty(frame.pairs)
-    prompt = 'a dark minimalist void, silence, low contrast, geometric shadows';
+    prompt = sprintf('a dark minimalist void, silence, low contrast, geometric shadows%s', tuning_str);
   else
     % pick the strongest pair (highest salience)
     [~, idx] = max([frame.pairs.salience]);
@@ -30,8 +37,8 @@ function bridge_to_inference(frame)
     % blend names are like 'power-sweetness', 'blue-alien', etc.
     theme_str = strrep(p.blend_name, '-', ' and ');
     
-    prompt = sprintf('abstract generative art representing %s, %s, driven by %0.f hz and %0.f hz peaks, intensity %.2f', ...
-                     theme_str, complexity_str, p.freq_high, p.freq_low, frame.loudness);
+    prompt = sprintf('abstract generative art representing %s, %s, driven by %0.f hz and %0.f hz peaks, intensity %.2f%s', ...
+                     theme_str, complexity_str, p.freq_high, p.freq_low, frame.loudness, tuning_str);
   end
 
   % ── execution ────────────────────────────────────────────────────────

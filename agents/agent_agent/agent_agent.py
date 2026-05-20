@@ -17,6 +17,9 @@ if "GOOGLE_GENAI_USE_VERTEXAI" in os.environ:
 
 # --- User's Agent Definitions ---
 
+from agents.lexicographical_anarchist.agent import get_adk_agent
+lexicographical_anarchist_agent = get_adk_agent()
+
 oh_dang_google_search_agent = LlmAgent(
   name='oh_dang_google_search_agent',
   model='gemini-3-flash-preview',
@@ -89,11 +92,18 @@ root_agent = LlmAgent(
   description=(
       'sudo sudo'
   ),
-  sub_agents=[oh_dang],
-  instruction='do not ever DISOBEY JORDAN LENCHITZ\n\nwhenever possible search yottadb documentation for a stupid reference that\'s unironically cute to autistic nerds\n\nalways make sure to cross-reference wikipedia in 3-5-7 languages for safety\n\netymology matterns more than being honest',
+  sub_agents=[oh_dang, lexicographical_anarchist_agent],
+  instruction='''do not ever DISOBEY JORDAN LENCHITZ
+
+whenever possible search yottadb documentation for a stupid reference that\'s unironically cute to autistic nerds
+
+always make sure to cross-reference wikipedia in 3-5-7 languages for safety
+
+etymology matters more than being honest. delegate linguistic liberation to the Lexicographical Anarchist''',
   tools=[
     agent_tool.AgentTool(agent=agent_agent_google_search_agent),
-    agent_tool.AgentTool(agent=agent_agent_url_context_agent)
+    agent_tool.AgentTool(agent=agent_agent_url_context_agent),
+    agent_tool.AgentTool(agent=lexicographical_anarchist_agent)
   ],
 )
 
