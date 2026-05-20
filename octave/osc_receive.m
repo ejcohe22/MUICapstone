@@ -457,9 +457,19 @@ end
 
 
 function [num, den] = snap_to_preset(r, preset_ratios)
-% snap ratio r to the nearest ratio in preset_ratios [num, den]
+% SNAP_TO_PRESET  snap ratio r to the nearest ratio in preset_ratios [num, den]
+%                 implements a "morph" (smoothing) to prevent jitter.
+  
+  persistent smoothed_r;
+  if isempty(smoothed_r), smoothed_r = r; end
+  
+  % Morph factor: higher = faster snap, lower = more "viscous"
+  % 0.1 gives a nice balance over 30fps frames.
+  alpha = 0.1;
+  smoothed_r = (1 - alpha) * smoothed_r + alpha * r;
+
   vals = preset_ratios(:, 1) ./ preset_ratios(:, 2);
-  [~, idx] = min(abs(vals - r));
+  [~, idx] = min(abs(vals - smoothed_r));
   num = preset_ratios(idx, 1);
   den = preset_ratios(idx, 2);
 end

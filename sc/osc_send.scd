@@ -37,6 +37,25 @@ OSCdef(\ancepsDescriptors, { |msg|
     ~ancepsLastDescriptors = msg[3..];
 }, '/anceps/descriptors');
 
+// ── undecimal responders ───────────────────────────────────────────────────
+// receive undecimal control data and update the blessed synth
+
+OSCdef(\ancepsUndecimalParams, { |msg|
+    var freeze = msg[1];
+    var strangeness = msg[2];
+    var fundamental = msg[3];
+    if(~ancepsBlessedSynth.notNil) {
+        ~ancepsBlessedSynth.set(\freeze, freeze, \strangeness, strangeness, \fundamental, fundamental);
+    };
+}, '/anceps/undecimal/params');
+
+OSCdef(\ancepsPrimeLimits, { |msg|
+    var limits = msg[1..];
+    if(~ancepsBlessedSynth.notNil) {
+        ~ancepsBlessedSynth.setn(\prime_limits, limits);
+    };
+}, '/anceps/prime_limits');
+
 // ── spectrum decoder ───────────────────────────────────────────────────────
 // supercollider fast fourier transform buffer layout for N frames:
 //   index 0             : direct current bin (real only)

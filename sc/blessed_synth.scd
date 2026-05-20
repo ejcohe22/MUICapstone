@@ -16,13 +16,16 @@ s.waitForBoot({
 
     SynthDef(\ancepsBlessedSynth, {
         arg out = 0, amp = 0.5, gate = 1, shimmer = 0.01, tunneling_prob = 1.0,
-            visual_entropy = 0, visual_chaos = 0, depth = 0;
+            visual_entropy = 0, visual_chaos = 0, depth = 0, entropy_lfo = 0.5,
+            freeze = 0, strangeness = 0, fundamental = 440;
         
         // support up to 8 partials, matching ~ancepsMaxPeaks in osc_send.scd
         var freqs = \freqs.kr(Array.fill(8, 0));
         var mags = \mags.kr(Array.fill(8, 0));
+        var prime_limits = \prime_limits.kr(Array.fill(8, 3));
         
         var partials, sig, trigger, toggle, swappedMags, noise;
+        var gran_trigger, granular, pulsar_freq, pulsar, hidden_osc;
 
         // ── Overtone Quantum Tunneling ──────────────────────────────────────
         // logic (using Dust) that periodically and suddenly swaps the amplitudes 
@@ -59,11 +62,80 @@ s.waitForBoot({
             phase = 2 * pi * f * jitter;
             
             partials[i] = SinOsc.ar(f, phase) * m;
+            partials[i] = partials[i] + (noise / 8);
         };
 
-        // ── Recursive Spatial Expansion ─────────────────────────────────────
-        // Use 'depth' to modulate the Stereo width of the synth output (0 = mono, 15 = wide stereo)
-        sig = Splay.ar(partials + (noise/8), spread: depth.linlin(0, 15, 0, 1));
+        // ── Quantum Overtone Interference ──────────────────────────────────
+        // Logic where partials 'interfere' based on frequency proximity (subtle AM)
+        8.do { |i|
+            var am = 1.0;
+            8.do { |j|
+                if (i != j) {
+                    var diff = (freqs[i] - freqs[j]).abs;
+                    var prox = diff < 15;
+                    // Apply subtle AM if partials are within 15Hz
+                    am = am * (1 + (prox * 0.05 * SinOsc.kr(diff.max(0.1))));
+                }
+            };
+            partials[i] = partials[i] * am;
+        };
+
+        // ── Visual Entropy LFO (Hidden Oscillator) ────────────────────────
+        // Map LFO to pulse width of a sub-oscillator
+        hidden_osc = Pulse.ar(fundamental / 4, entropy_lfo.linlin(0, 1, 0.01, 0.99)) * 0.05 * visual_entropy;
+
+        // ── Lattice Panning ──────────────────────────────────────────────────
+        // Logic to pan partials based on their prime-limit.
+        sig = partials.collect({ |p_sig, i|
+            var pl = prime_limits[i];
+            var pan = case
+                { pl == 3 } { -0.8 }
+                { pl == 5 } { 0.8 }
+                { pl == 7 } { 0.0 }
+                { pl == 11 } { 0.0 }
+                { true } { 0.0 };
+            
+            // Apply depth to pan spread
+            pan = pan * depth.linlin(0, 15, 0, 1);
+            
+            if(pl == 11) {
+                // 11-limit: phase-inverted surround/L-R offset
+                [p_sig, p_sig * -1]
+            } {
+                Pan2.ar(p_sig, pan)
+            };
+        }).sum;
+
+        sig = sig + Pan2.ar(hidden_osc, 0);
+
+        // ── Recursive Buffer Feedback ───────────────────────────────────────
+        // depth is 0-15. Add a delay line with feedback (decay time).
+        sig = CombC.ar(sig, 0.2, 0.2, depth.linlin(0, 15, 0, 6));
+
+        // ── Strangeness-to-Granular ─────────────────────────────────────────
+        // Simple granular cloud where density is driven by 'strangeness'
+        gran_trigger = Dust.ar(strangeness.linexp(0, 1, 2, 200));
+        granular = GrainSin.ar(2, gran_trigger, 0.05, freqs[0].max(20), 0);
+        sig = sig + (granular * strangeness * 0.2);
+
+        // ── 'Pure' Silence Gate ─────────────────────────────────────────────
+        // Noise gate that only passes signal when 'strangeness' is below 0.5
+        sig = Gate.ar(sig, strangeness < 0.5);
+
+        // ── 11/8 Pulsar ─────────────────────────────────────────────────────
+        // LFO frequency is (Fundamental * 11/8 / 128)
+        pulsar_freq = (fundamental * 1.375 / 128);
+        pulsar = SinOsc.kr(pulsar_freq).range(0.2, 1.0);
+        sig = sig * pulsar;
+
+        // ── The Undecimal Ghost (Spectral Freeze) ───────────────────────────
+        // Use 'PV_MagFreeze' (FFT) to freeze the current spectrum
+        sig = sig.collect({ |ch|
+            var chain = FFT(LocalBuf(2048), ch);
+            chain = PV_MagFreeze(chain, freeze);
+            IFFT(chain);
+        });
+
         sig = sig * amp;
         sig = sig * EnvGen.kr(Env.asr(0.1, 1, 0.2), gate, doneAction: 2);
         
@@ -106,6 +178,14 @@ s.waitForBoot({
             ~ancepsBlessedSynth.set(\visual_entropy, val);
         };
     }, '/visual/entropy');
+
+    // visual feedback: /visual/entropy_lfo [val]
+    OSCdef(\visualEntropyLFO, { |msg|
+        var val = msg[1];
+        if(~ancepsBlessedSynth.notNil) {
+            ~ancepsBlessedSynth.set(\entropy_lfo, val);
+        };
+    }, '/visual/entropy_lfo');
 
     // visual feedback: /visual/chaos [val]
     OSCdef(\visualChaos, { |msg|

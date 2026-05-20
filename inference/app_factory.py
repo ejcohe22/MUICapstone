@@ -103,8 +103,24 @@ class FeedbackState:
         self.last_brightness = 0.5
         self.last_entropy = 0.5
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 57120)
+        self.lfo_phase = 0.0
 
 feedback_state = FeedbackState()
+
+async def entropy_lfo_loop():
+    """Generates a continuous LFO signal whose frequency is modulated by visual entropy."""
+    while True:
+        try:
+            # Frequency ranges from 0.1Hz to 5.0Hz based on entropy
+            freq = feedback_state.last_entropy * 4.9 + 0.1
+            # Update phase (assuming 20Hz update rate, so 0.05s steps)
+            dt = 0.05
+            feedback_state.lfo_phase = (feedback_state.lfo_phase + freq * dt) % 1.0
+            lfo_val = (np.sin(2 * np.pi * feedback_state.lfo_phase) + 1) / 2
+            feedback_state.osc_client.send_message("/visual/entropy_lfo", float(lfo_val))
+        except Exception:
+            pass
+        await asyncio.sleep(0.05)
 
 def analyze_and_send_osc(response: InferenceResponse):
     """
@@ -247,6 +263,10 @@ def create_app() -> FastAPI:
                     feedback_state.osc_client.send_message("/site/depth", float(depth))
         except (WebSocketDisconnect, Exception):
             manager.disconnect(websocket)
+
+    @app.on_event("startup")
+    async def startup_event():
+        asyncio.create_task(entropy_lfo_loop())
 
     return app
 

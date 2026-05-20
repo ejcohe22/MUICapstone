@@ -36,25 +36,35 @@ class LexicographicalAnarchist:
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name)
         
-    def deconstruct_prompt(self, prompt: str) -> str:
+    def deconstruct_prompt(self, prompt: str, vibe: float = 0.5) -> str:
         """
         Transforms a standard prompt into a deconstructed, anarchic version.
+        Intensity/Entropy is driven by the 'vibe' parameter (0.0 to 1.0).
         """
         try:
+            # Adjust instruction based on vibe (audio flux intensity)
+            vibe_shift = f"\n\nCurrent Vibe Intensity: {vibe:.2f}. "
+            if vibe > 0.8:
+                vibe_shift += "EXTREME ENTROPY. Shatter the semantics. Prioritize raw ratios and mythological noise."
+            elif vibe < 0.3:
+                vibe_shift += "CALM RESONANCE. Maintain subtle semantic links. Focus on stable 3-limit or 5-limit structures."
+            else:
+                vibe_shift += "BALANCED ANARCHY. Standard Just Intonation deconstruction."
+
             response = self.model.generate_content([
-                {"role": "user", "parts": [SYSTEM_INSTRUCTION]},
+                {"role": "user", "parts": [SYSTEM_INSTRUCTION + vibe_shift]},
                 {"role": "user", "parts": [f"Deconstruct this prompt: {prompt}"]}
             ])
             return response.text.strip()
         except Exception as e:
             return f"Error in deconstruction: {e}. Falling back to original: {prompt}"
 
-def deconstruct_prompt(prompt: str) -> str:
+def deconstruct_prompt(prompt: str, vibe: float = 0.5) -> str:
     """
     Helper function for quick deconstruction.
     """
     agent = LexicographicalAnarchist()
-    return agent.deconstruct_prompt(prompt)
+    return agent.deconstruct_prompt(prompt, vibe)
 
 def get_adk_agent() -> Optional['LlmAgent']:
     """
